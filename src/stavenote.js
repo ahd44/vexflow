@@ -1151,6 +1151,10 @@ export class StaveNote extends StemmableNote {
     return super_stem_extension + (lines_over_octave_from_mid_line * spacing_between_lines);
   }
 
+  doNotDrawStems() {
+    this.noStems = true;
+  }
+
   // Draws all the `StaveNote` parts. This is the main drawing method.
   draw() {
     if (!this.context) {
@@ -1164,7 +1168,7 @@ export class StaveNote extends StemmableNote {
     }
 
     const xBegin = this.getNoteHeadBeginX();
-    const shouldRenderStem = this.hasStem() && !this.beam;
+    const shouldRenderStem = !this.noStems && this.hasStem() && !this.beam;
 
     // Format note head x positions
     this.note_heads.forEach(notehead => notehead.setX(xBegin));
