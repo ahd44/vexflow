@@ -867,7 +867,7 @@ export class Formatter {
 
     const noteHeadWidth = contexts.array[0].notePx;
     // use justifyWidth - noteHead width as total "available width", since we assign x positions to the left-hand side of the notehead
-    const availWidth = justifyWidth - noteHeadWidth * 1.5;
+    const availWidth = justifyWidth - noteHeadWidth * 2;
 
     //then, divide into whatever interval a sixteenth note is for this time signature. oh, that's... not as easy I thought I guess!
     const ts = [voices[0].time.num_beats, voices[0].time.beat_value];
