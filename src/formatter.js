@@ -841,12 +841,6 @@ export class Formatter {
 
     //for my use case, I don't care too much about the format step...
     // pulled from format(...), line 796
-    const opts = {
-      align_rests: false,
-      context: null,
-      stave: null,
-      ...options,
-    };
 
     this.voices = voices;
     this.createTickContexts(voices);
@@ -872,9 +866,9 @@ export class Formatter {
 
       // Calculate X position of right edge of previous note
       //const insideRightEdge = prevContext.getX() + prevMetrics.notePx + prevMetrics.totalRightPx;
-      const insideRightEdge = prevContext.getX() + prevMetrics.notePx/2;
+      const insideRightEdge = prevContext.getX() + prevMetrics.notePx / 2;
       // Calculate X position of left edge of current note
-      const insideLeftEdge = context.getX() + currMetrics.notePx/2;
+      const insideLeftEdge = context.getX() + currMetrics.notePx / 2;
 
       const gap = insideLeftEdge - insideRightEdge;
 
@@ -907,14 +901,14 @@ export class Formatter {
         const metrics = note.getMetrics();
         const formatterMetrics = note.getFormatterMetrics();
         //const leftNoteEdge = note.getX() + metrics.notePx + metrics.totalRightPx;
-        const leftNoteEdge = note.getX() + metrics.notePx/2;
+        const leftNoteEdge = note.getX() + metrics.notePx / 2;
         let space = 0;
 
         if (i < (notes.length - 1)) {
           const rightNote = notes[i + 1];
-          const rightMetrics = rightNote.getMetrics();
+          //const rightMetrics = rightNote.getMetrics();
           //const rightNoteEdge = rightNote.getX() - rightMetrics.totalLeftPx;
-          const rightNoteEdge = rightNote.getX() + metrics.notePx/2;
+          const rightNoteEdge = rightNote.getX() + metrics.notePx / 2;
 
           space = rightNoteEdge - leftNoteEdge;
           formatterMetrics.space.used = rightNote.getX() - note.getX();
