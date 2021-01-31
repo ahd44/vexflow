@@ -851,6 +851,34 @@ export class Formatter {
     }
 
     this.justifyWidth = justifyWidth;
+    const renderingContext = stave.getContext();
+
+    // Pass 1: Give each note maximum width requested by context.
+    const { list: contextList, map: contextMap } = contexts;let x = 0;
+    let shift = 0;
+    this.minTotalWidth = 0;
+
+    contextList.forEach((tick) => {
+      const context = contextMap[tick];
+      if (renderingContext) context.setContext(renderingContext);
+
+      // Make sure that all tickables in this context have calculated their
+      // space requirements.
+      context.preFormat();
+
+      const width = context.getWidth();
+      this.minTotalWidth += width;
+
+      const metrics = context.getMetrics();
+      x = x + shift + metrics.totalLeftPx;
+      context.setX(x);
+
+      // Calculate shift for the next tick.
+      shift = width - metrics.totalLeftPx;
+    });
+
+    this.minTotalWidth = x + shift;
+    this.hasMinTotalWidth = true;
 
     //from evaluate(...), line 623; just copied everything so need to modify
 
