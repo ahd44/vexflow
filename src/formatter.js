@@ -873,19 +873,19 @@ export class Formatter {
     const ts = [voices[0].time.num_beats, voices[0].time.beat_value];
     const numsixteenth = parseInt(ts[0], 10) * (16 / parseInt(ts[1], 10));
 
-    // use resolution to match up with contextList
-    const resolutionPerSixteenth = voices[0].time.resolution / numsixteenth / 2; //don't know why I need to /2 it, but I do, so...
+    // use ticks to match up with contextList
+    const ticksPerSixteenth = voices[0].totalTicks.value() / numsixteenth;
 
     //divide availWidth by numsixteenth to get the "sixteenth note interval"
     const sixteenthInterval = availWidth / numsixteenth;
 
-    // now we know where to place the notes, basically, based on the tickContexts/resolution/etc.
+    // now we know where to place the notes, basically, based on the tickContexts/ticks/etc.
     contextList.forEach((tick) => {
       const context = contextMap[tick];
       if (renderingContext) context.setContext(renderingContext);
 
       context.preFormat();
-      const x = (tick / resolutionPerSixteenth) * sixteenthInterval;
+      const x = (tick / ticksPerSixteenth) * sixteenthInterval;
       context.setX(x);
     });
 
