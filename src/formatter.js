@@ -854,7 +854,9 @@ export class Formatter {
     const renderingContext = stave.getContext();
 
     // Pass 1: Give each note maximum width requested by context.
-    const { list: contextList, map: contextMap } = contexts;let x = 0;
+    const contexts = this.tickContexts;
+    const { list: contextList, map: contextMap } = contexts;
+    let x = 0;
     let shift = 0;
     this.minTotalWidth = 0;
 
