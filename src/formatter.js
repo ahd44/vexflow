@@ -874,7 +874,7 @@ export class Formatter {
     const numsixteenth = parseInt(ts[0], 10) * (16 / parseInt(ts[1], 10));
 
     // use resolution to match up with contextList
-    const resolutionPerSixteenth = voices[0].time.resolution / numsixteenth;
+    const resolutionPerSixteenth = voices[0].time.resolution / numsixteenth / 2; //don't know why I need to /2 it, but I do, so...
 
     //divide availWidth by numsixteenth to get the "sixteenth note interval"
     const sixteenthInterval = availWidth / numsixteenth;
