@@ -828,4 +828,128 @@ export class Formatter {
     L('Formatting voices to width: ', justifyWidth);
     return this.format(voices, justifyWidth, { context: stave.getContext(), ...options });
   }
+
+  formatToStaveEqual(voices, stave, options) {
+    options = {
+      padding: 10,
+      context: stave.getContext(),
+      ...options
+    };
+
+    const justifyWidth = stave.getNoteEndX() - stave.getNoteStartX() - options.padding;
+    L('Formatting voices EQUALLY to width: ', justifyWidth);
+
+    //for my use case, I don't care too much about the format step...
+    // pulled from format(...), line 796
+    const opts = {
+      align_rests: false,
+      context: null,
+      stave: null,
+      ...options,
+    };
+
+    this.voices = voices;
+    this.createTickContexts(voices);
+
+    //from preFormat(...), line 445
+    if (voices && stave) {
+      voices.forEach(voice => voice.setStave(stave).preFormat()); //just sets stave for each tickable
+    }
+
+    this.justifyWidth = justifyWidth;
+
+    //from evaluate(...), line 623; just copied everything so need to modify
+
+    this.contextGaps = { total: 0, gaps: [] };
+
+    this.tickContexts.list.forEach((tick, index) => {
+      if (index === 0) return;
+      const prevTick = this.tickContexts.list[index - 1];
+      const prevContext = this.tickContexts.map[prevTick];
+      const context = this.tickContexts.map[tick];
+      const prevMetrics = prevContext.getMetrics();
+      const currMetrics = context.getMetrics();
+
+      // Calculate X position of right edge of previous note
+      //const insideRightEdge = prevContext.getX() + prevMetrics.notePx + prevMetrics.totalRightPx;
+      const insideRightEdge = prevContext.getX() + prevMetrics.notePx/2;
+      // Calculate X position of left edge of current note
+      const insideLeftEdge = context.getX() + currMetrics.notePx/2;
+
+      const gap = insideLeftEdge - insideRightEdge;
+
+      this.contextGaps.total += gap;
+
+      this.contextGaps.gaps.push({ x1: insideRightEdge, x2: insideLeftEdge });
+
+      // Tell the tick contexts how much they can reposition themselves.
+      context.getFormatterMetrics().freedom.left = gap;
+      prevContext.getFormatterMetrics().freedom.right = gap;
+    });
+
+    // Calculate mean distance in each voice for each duration type, then calculate
+    // how far each note is from the mean.
+    const durationStats = this.durationStats = {};
+
+    function updateStats(duration, space) {
+      const stats = durationStats[duration];
+      if (stats === undefined) {
+        durationStats[duration] = { mean: space, count: 1 };
+      } else {
+        stats.count += 1;
+        stats.mean = (stats.mean + space) / 2;
+      }
+    }
+
+    this.voices.forEach(voice => {
+      voice.getTickables().forEach((note, i, notes) => {
+        const duration = note.getTicks().clone().simplify().toString();
+        const metrics = note.getMetrics();
+        const formatterMetrics = note.getFormatterMetrics();
+        //const leftNoteEdge = note.getX() + metrics.notePx + metrics.totalRightPx;
+        const leftNoteEdge = note.getX() + metrics.notePx/2;
+        let space = 0;
+
+        if (i < (notes.length - 1)) {
+          const rightNote = notes[i + 1];
+          const rightMetrics = rightNote.getMetrics();
+          //const rightNoteEdge = rightNote.getX() - rightMetrics.totalLeftPx;
+          const rightNoteEdge = rightNote.getX() + metrics.notePx/2;
+
+          space = rightNoteEdge - leftNoteEdge;
+          formatterMetrics.space.used = rightNote.getX() - note.getX();
+          rightNote.getFormatterMetrics().freedom.left = space;
+        } else {
+          space = justifyWidth - leftNoteEdge;
+          formatterMetrics.space.used = justifyWidth - note.getX();
+        }
+
+        formatterMetrics.freedom.right = space;
+        updateStats(duration, formatterMetrics.space.used);
+      });
+    });
+
+    // Calculate how much each note deviates from the mean. Loss function is square
+    // root of the sum of squared deviations.
+    let totalDeviation = 0;
+    this.voices.forEach(voice => {
+      voice.getTickables().forEach((note) => {
+        const duration = note.getTicks().clone().simplify().toString();
+        const metrics = note.getFormatterMetrics();
+
+        metrics.space.mean = durationStats[duration].mean;
+        metrics.duration = duration;
+        metrics.iterations += 1;
+        metrics.space.deviation = metrics.space.used - metrics.space.mean;
+
+        totalDeviation += Math.pow(metrics.space.deviation, 2);
+      });
+    });
+
+    this.totalCost = Math.sqrt(totalDeviation);
+    this.lossHistory.push(this.totalCost);
+    return this.totalCost;
+
+    //this.preFormat(justifyWidth, opts.context, voices, stave); //should just apply stave to tickables
+  }
 }
