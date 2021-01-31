@@ -865,13 +865,13 @@ export class Formatter {
     const contexts = this.tickContexts;
     const { list: contextList, map: contextMap } = contexts;
 
-    const noteHeadWidth = contexts["array"][0].notePx;
+    const noteHeadWidth = contexts.array[0].notePx;
     // use justifyWidth - noteHead width as total "available width", since we assign x positions to the left-hand side of the notehead
     const availWidth = justifyWidth - noteHeadWidth;
 
     //then, divide into whatever interval a sixteenth note is for this time signature. oh, that's... not as easy I thought I guess!
     const ts = [voices[0].time.num_beats, voices[0].time.beat_value];
-    const numsixteenth = parseInt(ts[0]) * (16 / parseInt(ts[1]));
+    const numsixteenth = parseInt(ts[0], 10) * (16 / parseInt(ts[1], 10));
 
     // use resolution to match up with contextList
     const resolutionPerSixteenth = voices[0].time.resolution / numsixteenth;
