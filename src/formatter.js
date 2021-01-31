@@ -839,6 +839,9 @@ export class Formatter {
     const justifyWidth = stave.getNoteEndX() - stave.getNoteStartX() - options.padding;
     L('Formatting voices EQUALLY to width: ', justifyWidth);
 
+    //like this seriously isn't fucking rocket science.
+    // find each note head width
+
     //for my use case, I don't care too much about the format step...
     // pulled from format(...), line 796
 
@@ -854,125 +857,44 @@ export class Formatter {
     const renderingContext = stave.getContext();
 
     // Pass 1: Give each note maximum width requested by context.
+    // but actually just space it all out based on sixteenth notes being the max subdivision...
+    // so we have defined positions based on the sixteenth notes and the noteHead width
+    // and we just put them into the right "slots"
+    // so, let's do those calculations, using justifyWidth and contexts["array"][0].notePx
+
     const contexts = this.tickContexts;
     const { list: contextList, map: contextMap } = contexts;
-    let x = 0;
-    let shift = 0;
-    this.minTotalWidth = 0;
 
+    const noteHeadWidth = contexts["array"][0].notePx;
+    // use justifyWidth - noteHead width as total "available width", since we assign x positions to the left-hand side of the notehead
+    const availWidth = justifyWidth - noteHeadWidth;
+
+    //then, divide into whatever interval a sixteenth note is for this time signature. oh, that's... not as easy I thought I guess!
+    const ts = [voices[0].time.num_beats, voices[0].time.beat_value];
+    const numsixteenth = parseInt(ts[0]) * (16 / parseInt(ts[1]));
+
+    // use resolution to match up with contextList
+    const resolutionPerSixteenth = voices[0].time.resolution / numsixteenth;
+
+    //divide availWidth by numsixteenth to get the "sixteenth note interval"
+    const sixteenthInterval = availWidth / numsixteenth;
+
+    // now we know where to place the notes, basically, based on the tickContexts/resolution/etc.
     contextList.forEach((tick) => {
       const context = contextMap[tick];
       if (renderingContext) context.setContext(renderingContext);
 
-      // Make sure that all tickables in this context have calculated their
-      // space requirements.
       context.preFormat();
-
-      const width = context.getWidth();
-      this.minTotalWidth += width;
-
-      const metrics = context.getMetrics();
-      x = x + shift + metrics.totalLeftPx;
+      const x = (tick / resolutionPerSixteenth) * sixteenthInterval;
       context.setX(x);
-
-      // Calculate shift for the next tick.
-      shift = width - metrics.totalLeftPx;
     });
-
-    this.minTotalWidth = x + shift;
-    this.hasMinTotalWidth = true;
 
     //from evaluate(...), line 623; just copied everything so need to modify
 
-    this.contextGaps = { total: 0, gaps: [] };
-
-    this.tickContexts.list.forEach((tick, index) => {
-      if (index === 0) return;
-      const prevTick = this.tickContexts.list[index - 1];
-      const prevContext = this.tickContexts.map[prevTick];
-      const context = this.tickContexts.map[tick];
-      const prevMetrics = prevContext.getMetrics();
-      const currMetrics = context.getMetrics();
-
-      // Calculate X position of right edge of previous note
-      //const insideRightEdge = prevContext.getX() + prevMetrics.notePx + prevMetrics.totalRightPx;
-      const insideRightEdge = prevContext.getX() + prevMetrics.notePx / 2;
-      // Calculate X position of left edge of current note
-      const insideLeftEdge = context.getX() + currMetrics.notePx / 2;
-
-      const gap = insideLeftEdge - insideRightEdge;
-
-      this.contextGaps.total += gap;
-
-      this.contextGaps.gaps.push({ x1: insideRightEdge, x2: insideLeftEdge });
-
-      // Tell the tick contexts how much they can reposition themselves.
-      context.getFormatterMetrics().freedom.left = gap;
-      prevContext.getFormatterMetrics().freedom.right = gap;
-    });
-
-    // Calculate mean distance in each voice for each duration type, then calculate
-    // how far each note is from the mean.
-    const durationStats = this.durationStats = {};
-
-    function updateStats(duration, space) {
-      const stats = durationStats[duration];
-      if (stats === undefined) {
-        durationStats[duration] = { mean: space, count: 1 };
-      } else {
-        stats.count += 1;
-        stats.mean = (stats.mean + space) / 2;
-      }
-    }
-
-    this.voices.forEach(voice => {
-      voice.getTickables().forEach((note, i, notes) => {
-        const duration = note.getTicks().clone().simplify().toString();
-        const metrics = note.getMetrics();
-        const formatterMetrics = note.getFormatterMetrics();
-        //const leftNoteEdge = note.getX() + metrics.notePx + metrics.totalRightPx;
-        const leftNoteEdge = note.getX() + metrics.notePx / 2;
-        let space = 0;
-
-        if (i < (notes.length - 1)) {
-          const rightNote = notes[i + 1];
-          //const rightMetrics = rightNote.getMetrics();
-          //const rightNoteEdge = rightNote.getX() - rightMetrics.totalLeftPx;
-          const rightNoteEdge = rightNote.getX() + metrics.notePx / 2;
-
-          space = rightNoteEdge - leftNoteEdge;
-          formatterMetrics.space.used = rightNote.getX() - note.getX();
-          rightNote.getFormatterMetrics().freedom.left = space;
-        } else {
-          space = justifyWidth - leftNoteEdge;
-          formatterMetrics.space.used = justifyWidth - note.getX();
-        }
-
-        formatterMetrics.freedom.right = space;
-        updateStats(duration, formatterMetrics.space.used);
-      });
-    });
-
     // Calculate how much each note deviates from the mean. Loss function is square
     // root of the sum of squared deviations.
-    let totalDeviation = 0;
-    this.voices.forEach(voice => {
-      voice.getTickables().forEach((note) => {
-        const duration = note.getTicks().clone().simplify().toString();
-        const metrics = note.getFormatterMetrics();
 
-        metrics.space.mean = durationStats[duration].mean;
-        metrics.duration = duration;
-        metrics.iterations += 1;
-        metrics.space.deviation = metrics.space.used - metrics.space.mean;
-
-        totalDeviation += Math.pow(metrics.space.deviation, 2);
-      });
-    });
-
-    this.totalCost = Math.sqrt(totalDeviation);
-    this.lossHistory.push(this.totalCost);
-    return this.totalCost;
+    return 0;
 
     //this.preFormat(justifyWidth, opts.context, voices, stave); //should just apply stave to tickables
   }
